@@ -1,0 +1,715 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>VIDGE Fun Learning Games</title>
+    <style>
+    :root{
+        --ui-shadow: 0 12px 30px rgba(10,20,40,0.12);
+        --accent: #ff7a7a;
+    }
+    html,body{height:100%;margin:0;font-family: "Nunito", "Trebuchet MS", Arial, sans-serif;background:#e6f7ff}
+    .app{height:100vh;display:flex;align-items:stretch;justify-content:center;padding:0}
+    .frame{width:100%;max-width:1200px;border-radius:12px;overflow:hidden;box-shadow:var(--ui-shadow);background:#fff;display:flex;flex-direction:column;height:100vh}
+
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:linear-gradient(90deg,#fff,#fff0);border-bottom:1px solid rgba(0,0,0,0.04)}
+    .logo{display:flex;align-items:center;gap:12px}
+    .badge{width:54px;height:54px;border-radius:10px;background:linear-gradient(135deg,#ffd8a8,#ffb1b1);display:flex;align-items:center;justify-content:center;font-weight:900;color:#7a2f2f}
+    h1{font-size:18px;margin:0}
+    p.subtitle{margin:0;color:#466;font-size:13px}
+
+    main{flex:1;position:relative}
+
+    /* Screens */
+    .screen{position:absolute;inset:0;display:none;padding:20px;overflow:auto}
+    .active{display:block}
+
+    /* flash overlay */
+    #flashOverlay{position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;background:rgba(255,0,0,0.0);opacity:0;transition:opacity 0.18s ease}
+    #flashOverlay.flash{opacity:0.85;transition:opacity 0.06s ease}
+    #flashOverlay.flash.fadeout{animation:flashPulse .28s linear forwards}
+    @keyframes flashPulse{0%{opacity:.85}100%{opacity:0}}
+
+    /* Start/menu backgrounds (inline SVG via data: URIs for offline) */
+    .start-bg{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><defs><linearGradient id=\"g\" x1=\"0\" x2=\"1\"><stop offset=\"0\" stop-color=\"%23ff9a9e\"/><stop offset=\"1\" stop-color=\"%23fad0c4\"/></linearGradient></defs><rect width=\"1200\" height=\"800\" fill=\"url(%23g)\"/></svg>');background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center}
+    .menu-bg{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><defs><linearGradient id=\"gm\" x1=\"0\" x2=\"1\"><stop offset=\"0\" stop-color=\"%23a1c4fd\"/><stop offset=\"1\" stop-color=\"%23c2e9fb\"/></linearGradient></defs><rect width=\"1200\" height=\"800\" fill=\"url(%23gm)\"/></svg>');background-size:cover;background-position:center;padding:40px;display:flex;align-items:center;justify-content:center}
+
+    /* game backgrounds */
+    .bg-memory{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><rect width=\"1200\" height=\"800\" fill=\"#c6f0d6\"/><g fill=\"#b6eab9\"><circle cx=\"120\" cy=\"80\" r=\"70\"/><circle cx=\"1000\" cy=\"120\" r=\"90\"/></g></svg>');background-size:cover;background-position:center}
+    .bg-focus{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><rect width=\"1200\" height=\"800\" fill=\"#bfe9ff\"/><g fill=\"#fff\" opacity=\"0.6\"><ellipse cx=\"120\" cy=\"120\" rx=\"100\" ry=\"40\"/><ellipse cx=\"360\" cy=\"80\" rx=\"140\" ry=\"56\"/></g></svg>');background-size:cover;background-position:center}
+    .bg-puzzle{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><rect width=\"1200\" height=\"800\" fill=\"#eafbe7\"/><g fill=\"#d6f9d7\" opacity=\"0.7\"><rect x=\"40\" y=\"40\" width=\"200\" height=\"120\" rx=\"20\"/><rect x=\"300\" y=\"60\" width=\"250\" height=\"150\" rx=\"20\"/></g></svg>');background-size:cover;background-position:center}
+    .bg-pattern{background-image:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 800\"><rect width=\"1200\" height=\"800\" fill=\"#fff6da\"/><g fill=\"#fff1c6\" opacity=\"0.8\"><rect x=\"40\" y=\"40\" width=\"1200\" height=\"120\"/></g></svg>');background-size:cover;background-position:center}
+
+    /* panel */
+    .panel{max-width:1100px;margin:18px auto;background:rgba(255,255,255,0.92);padding:18px;border-radius:12px;box-shadow:var(--ui-shadow)}
+
+    /* Memory grid & cards */
+    .memory-grid{display:grid;gap:14px;justify-content:center;align-content:center;margin-top:12px}
+    .card{width:90px;height:90px;border-radius:12px;background:#444;color:#444;font-size:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,0.08)}
+    .card.flipped,.card.matched{background:#4CAF50;color:white;cursor:default}
+
+    /* Focus */
+    #focusCanvas{width:100%;max-width:1080px;height:460px;border-radius:12px;display:block;background:rgba(255,255,255,0.9);box-shadow:0 12px 30px rgba(0,0,0,0.12);margin:12px auto}
+
+    /* Puzzle */
+    .puzzle-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+    .slot,.piece{width:130px;height:130px;border-radius:18px;background:white;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,0.08)}
+    .slot{border:2px dashed #ddd}
+    .piece{cursor:grab}
+
+    /* Pattern */
+    .pattern-seq{font-size:20px;margin-top:12px}
+    .pattern-options{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+    .option{min-width:120px;padding:14px;border-radius:12px;background:white;box-shadow:0 12px 30px rgba(0,0,0,0.08);font-size:22px;cursor:pointer;text-align:center}
+    .option.wrong{animation:shake 0.28s linear}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+
+    .controls{display:flex;gap:12px;justify-content:center;margin-top:14px}
+    @media (max-width:720px){
+        .card{width:64px;height:64px;font-size:22px}
+        .slot,.piece{width:86px;height:86px;font-size:16px}
+        #focusCanvas{height:320px}
+    }
+    </style>
+    </head>
+    <body>
+    <div id="flashOverlay"></div>
+
+    <div class="app">
+    <div class="frame">
+        <header>
+        <div class="logo">
+            <div class="badge">VID</div>
+            <div>
+            <h1>VIDGE Fun Learning Games</h1>
+            <p class="subtitle">Offline • Infinite levels • Fullscreen</p>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+            <button id="muteBtn" onclick="toggleMusic()" style="padding:8px 12px;border-radius:8px;">Mute Music</button>
+            <button onclick="goToMenu()" style="padding:8px 12px;border-radius:8px;">Main Menu</button>
+        </div>
+        </header>
+
+        <main>
+        <!-- START -->
+        <section id="startScreen" class="screen start-bg active" style="display:flex;align-items:center;justify-content:center">
+            <div class="start-inner panel" style="text-align:center;background:rgba(0,0,0,0.08);color:white">
+            <h2 style="font-size:32px;margin-bottom:8px">🎉 VIDGE Fun Learning Games</h2>
+            <p style="color:#fff;margin-bottom:18px">Tap Start to go to the main menu. Each game runs fullscreen and advances levels automatically.</p>
+            <div style="display:flex;gap:12px;justify-content:center">
+                <button class="game-btn" onclick="goToMenu(); startBackgroundMusic();" style="font-size:18px;padding:12px 22px;">Start Game</button>
+            </div>
+            </div>
+        </section>
+
+        <!-- MENU -->
+        <section id="menuScreen" class="screen menu-bg" style="display:none;align-items:center;justify-content:center">
+            <div class="panel" style="text-align:center">
+            <h2>Choose a game</h2>
+            <div class="menu-grid" style="margin-top:14px">
+                <div class="game-btn" onclick="startMemory()">🧠 Memory Match</div>
+                <div class="game-btn" onclick="startFocus()">🎯 Focus Pop</div>
+                <div class="game-btn" onclick="startPuzzle()">🧩 Puzzle Builder</div>
+                <div class="game-btn" onclick="startPattern()">🔢 Pattern Detective</div>
+            </div>
+            <div class="controls small" style="margin-top:12px;color:#466">Tip: click Start then choose a game. For full-screen, accept the browser’s fullscreen prompt if shown.</div>
+            </div>
+        </section>
+
+        <!-- MEMORY -->
+        <section id="memoryScreen" class="screen bg-memory" style="display:none;align-items:flex-start;justify-content:flex-start;padding-top:24px">
+            <div class="panel" style="width:100%">
+            <h2>Memory Match — Level <span id="memoryLevel">1</span></h2>
+            <p class="small">No timer. Match all pairs to auto-advance.</p>
+            <div id="memoryGrid" class="memory-grid" style="margin-top:12px"></div>
+            <div class="controls"><button onclick="exitGame()">Exit Game</button></div>
+            <div id="memoryMsg" style="margin-top:10px;font-weight:700;color:#2a6"></div>
+            </div>
+        </section>
+
+        <!-- FOCUS -->
+        <section id="focusScreen" class="screen bg-focus" style="display:none;align-items:flex-start;justify-content:flex-start;padding-top:24px">
+            <div class="panel" style="width:100%">
+            <h2>Focus Pop — Level <span id="focusLevel">1</span></h2>
+            <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-top:6px">
+                <div class="small">Target: <strong id="focusTargetLabel">Vowels</strong></div>
+                <div class="small">Score: <strong id="focusScore">0</strong></div>
+                <div class="small">Mistakes left: <strong id="focusMistakes">5</strong></div>
+                <div class="small">Time: <strong id="focusTimer">30</strong>s</div>
+            </div>
+
+            <canvas id="focusCanvas"></canvas>
+
+            <div class="controls"><button onclick="exitGame()">Exit Game</button></div>
+            <div id="focusMsg" style="margin-top:8px;font-weight:700;color:#b33"></div>
+            </div>
+        </section>
+
+        <!-- PUZZLE -->
+        <section id="puzzleScreen" class="screen bg-puzzle" style="display:none;align-items:flex-start;justify-content:flex-start;padding-top:24px">
+            <div class="panel" style="width:100%">
+            <h2>Puzzle Builder — Level <span id="puzzleLevel">1</span></h2>
+            <div style="display:flex;gap:22px;justify-content:center;margin-top:8px">
+                <div><div style="font-weight:800">Animal</div><div id="puzzleAnimal" style="margin-top:6px"></div></div>
+                <div><div style="font-weight:800">Time left</div><div id="puzzleTimer" style="margin-top:6px">45</div></div>
+                <div><div style="font-weight:800">Hint</div><div id="puzzleHint" style="margin-top:6px;color:#346"></div></div>
+            </div>
+
+            <div class="puzzle-row" id="puzzleSlots"></div>
+            <div class="puzzle-row" id="puzzlePieces" style="margin-top:14px"></div>
+
+            <div class="controls"><button onclick="exitGame()">Exit Game</button></div>
+            <div id="puzzleMsg" style="margin-top:8px;font-weight:700;color:#2a6"></div>
+            </div>
+        </section>
+
+        <!-- PATTERN -->
+        <section id="patternScreen" class="screen bg-pattern" style="display:none;align-items:flex-start;justify-content:flex-start;padding-top:24px">
+            <div class="panel" style="width:100%">
+            <h2>Pattern Detective — Level <span id="patternLevel">1</span></h2>
+            <p class="small">Find the next number in the sequence.</p>
+            <div class="pattern-seq" id="patternSeq" style="font-weight:700;margin-top:12px"></div>
+            <div class="pattern-options" id="patternOpts"></div>
+
+            <div style="display:flex;gap:18px;justify-content:center;margin-top:14px">
+                <div class="small">Time left: <strong id="patternTimer">20</strong></div>
+                <div class="small">Pattern: <strong id="patternType">-</strong></div>
+            </div>
+
+            <div class="controls" style="margin-top:12px"><button onclick="exitGame()">Exit Game</button></div>
+            <div id="patternMsg" style="margin-top:8px;font-weight:700;color:#2a6"></div>
+            </div>
+        </section>
+
+        <!-- GAME OVER -->
+        <section id="gameOverScreen" class="screen" style="display:none;align-items:center;justify-content:center;background:#ff9090">
+            <div style="padding:26px;border-radius:12px;background:rgba(0,0,0,0.08);text-align:center;width:90%;max-width:520px">
+            <h2 style="color:white;font-size:34px;margin-bottom:8px">⛔ GAME OVER</h2>
+            <p style="color:#fff;margin-bottom:16px">Try again — returning to the menu shortly.</p>
+            <div class="controls"><button onclick="backToMenu()" style="background:white;color:#073b4c">Back to Menu</button></div>
+            </div>
+        </section>
+
+        </main>
+    </div>
+    </div>
+
+    <script>
+    /* ======== Utilities ======== */
+    function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+    function flashRed(){ // overlay flash + vibrate
+    const ov = document.getElementById('flashOverlay');
+    ov.classList.remove('flash','fadeout');
+    void ov.offsetWidth;
+    ov.classList.add('flash');
+    if(navigator.vibrate) try{ navigator.vibrate(200); }catch(e){}
+    setTimeout(()=>{ ov.classList.add('fadeout'); }, 80);
+    setTimeout(()=>{ ov.classList.remove('flash','fadeout'); }, 360);
+    }
+
+    /* ===== WebAudio: background music + SFX (generated, offline) ===== */
+    let audioCtx = null;
+    let bgGain = null;
+    let sfxGain = null;
+    let bgOscNodes = [];
+    let musicPlaying = false;
+
+    function ensureAudio(){
+    if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        bgGain = audioCtx.createGain(); bgGain.gain.value = 0.12; bgGain.connect(audioCtx.destination);
+        sfxGain = audioCtx.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(audioCtx.destination);
+    }
+    }
+
+    /* Background music: soft arpeggio loop using oscillators + LFO */
+    function startBackgroundMusic(){
+    if(musicPlaying) return;
+    ensureAudio();
+    try{ audioCtx.resume?.(); }catch(e){}
+    const now = audioCtx.currentTime;
+    // create a simple 2-osc arpeggio pattern
+    function createVoice(freq, delay){
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const g = audioCtx.createGain(); g.gain.value = 0;
+        osc.connect(g); g.connect(bgGain);
+        osc.start(now + delay);
+        // ramp volume in and out for gentle notes
+        g.gain.setValueAtTime(0, now + delay);
+        g.gain.linearRampToValueAtTime(0.08, now + delay + 0.05);
+        g.gain.linearRampToValueAtTime(0, now + delay + 1.6);
+        // stop later
+        setTimeout(()=>{ try{ osc.stop(); }catch(e){} }, (delay + 1.8)*1000);
+        return osc;
+    }
+    // schedule repeating pattern every 2s
+    function schedule(){
+        const base = 220; // A3-ish
+        createVoice(base, 0.0);
+        createVoice(base*1.498, 0.12);
+        createVoice(base*2, 0.32);
+        // reuse via timeout
+        bgOscNodes.push(setTimeout(schedule, 1400)); // loop
+    }
+    schedule();
+    musicPlaying = true;
+    }
+    function stopBackgroundMusic(){
+    // clear scheduled timeouts
+    bgOscNodes.forEach(t=>clearTimeout(t));
+    bgOscNodes = [];
+    musicPlaying = false;
+    }
+
+    /* SFX helpers (small synthesized sounds) */
+    function playSFX(type){
+    ensureAudio();
+    if(!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(sfxGain);
+    if(type === 'flip'){
+        o.type = 'triangle'; o.frequency.setValueAtTime(600, t);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.2);
+    } else if(type === 'match'){
+        // short happy triad
+        const o1 = audioCtx.createOscillator(), g1 = audioCtx.createGain();
+        const o2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+        o1.connect(g1); g1.connect(sfxGain);
+        o2.connect(g2); g2.connect(sfxGain);
+        o1.type='sine'; o2.type='sine'; o1.frequency.value=880; o2.frequency.value=1100;
+        g1.gain.value=0; g2.gain.value=0;
+        o1.start(t); o2.start(t);
+        g1.gain.linearRampToValueAtTime(0.5, t+0.01); g2.gain.linearRampToValueAtTime(0.34, t+0.01);
+        g1.gain.exponentialRampToValueAtTime(0.0001, t+0.45); g2.gain.exponentialRampToValueAtTime(0.0001, t+0.45);
+        setTimeout(()=>{ try{ o1.stop(); o2.stop(); }catch(e){} }, 600);
+        return;
+    } else if(type === 'pop'){
+        o.type='square'; o.frequency.setValueAtTime(700, t);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.6, t+0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+    } else if(type === 'buzzer'){
+        o.type='sawtooth'; o.frequency.setValueAtTime(200, t);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.7, t+0.01);
+        o.frequency.exponentialRampToValueAtTime(60, t+0.18);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.35);
+    } else if(type === 'click'){
+        o.type='square'; o.frequency.setValueAtTime(1200, t);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.6, t+0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.08);
+    } else if(type === 'success'){
+        // short rising tone
+        o.type='sine'; o.frequency.setValueAtTime(600, t);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.65, t+0.01);
+        o.frequency.exponentialRampToValueAtTime(1200, t+0.35);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.55);
+    } else if(type === 'gameover'){
+        o.type='sine'; o.frequency.setValueAtTime(520, t);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.8, t+0.01);
+        o.frequency.exponentialRampToValueAtTime(220, t+0.35);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.6);
+    }
+    o.start(t);
+    o.stop(t + 0.6);
+    }
+
+    /* Mute toggle */
+    function toggleMusic(){
+    if(!audioCtx) ensureAudio();
+    if(musicPlaying){
+        stopBackgroundMusic();
+        document.getElementById('muteBtn').innerText = 'Unmute Music';
+    } else {
+        startBackgroundMusic();
+        document.getElementById('muteBtn').innerText = 'Mute Music';
+    }
+    }
+
+    /* ===== Fullscreen helper ===== */
+    function requestFullscreen(elem){
+    if(!elem) return;
+    const fn = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+    if(fn) try{ fn.call(elem); }catch(e){}
+    }
+
+    /* ===== Navigation and stops ===== */
+    function hideAllScreens(){ document.querySelectorAll('.screen').forEach(s=>{ s.style.display='none'; s.classList.remove('active'); }); stopAll(); }
+    function goToMenu(){ hideAllScreens(); document.getElementById('menuScreen').style.display='flex'; document.getElementById('menuScreen').classList.add('active'); }
+    function backToMenu(){ hideAllScreens(); goToMenu(); }
+    function exitGame(){ stopAll(); goToMenu(); }
+
+    /* Stop timers and animation */
+    function stopAll(){
+    if(window.focusAnim) cancelAnimationFrame(window.focusAnim);
+    if(window.focusTimer) clearInterval(window.focusTimer);
+    if(window.patternTimer) clearInterval(window.patternTimer);
+    if(window.puzzleTimer) clearInterval(window.puzzleTimer);
+    window.focusRunning = false;
+    }
+
+    /* ====== MEMORY MATCH ====== */
+    let memoryLevel = 1;
+    function startMemory(){
+    hideAllScreens();
+    document.getElementById('memoryScreen').style.display='flex'; document.getElementById('memoryScreen').classList.add('active');
+    requestFullscreen(document.documentElement);
+    initMemory(memoryLevel);
+    }
+    function initMemory(level){
+    memoryLevel = level;
+    document.getElementById('memoryLevel').textContent = memoryLevel;
+    const pairs = Math.min(4 + Math.floor(memoryLevel * 0.6), 30);
+    const grid = document.getElementById('memoryGrid');
+    grid.style.gridTemplateColumns = `repeat(${Math.min(pairs,10)}, 90px)`;
+    grid.innerHTML = '';
+    const allSymbols = ['🐸','🦋','🐔','🐝','🐟','🦆','🐢','🐞','🐶','🐱','🐭','🐨','🐯','🦁','🐵','🦄','🐙','🐧','🐷','🐮','🐬','🦒','🐴','🦩','🦜','🐤'];
+    const symbols = allSymbols.slice(0,pairs);
+    let cards = [];
+    symbols.forEach(s => { cards.push(s); cards.push(s); });
+    cards.sort(()=>Math.random()-0.5);
+    window.memoryCards = []; window.memoryFlipped = []; window.memoryMatched = 0;
+    cards.forEach((val,i) => {
+        const d = document.createElement('div'); d.className='card'; d.dataset.value=val;
+        d.onclick = memoryFlip; grid.appendChild(d); window.memoryCards.push(d);
+    });
+    document.getElementById('memoryMsg').textContent = '';
+    }
+    function memoryFlip(e){
+    const el = e.currentTarget;
+    if(el.classList.contains('flipped') || el.classList.contains('matched')) return;
+    if(window.memoryFlipped.length === 2) return;
+    // flip sound
+    playSFX('flip');
+    el.classList.add('flipped'); el.textContent = el.dataset.value;
+    window.memoryFlipped.push(el);
+    if(window.memoryFlipped.length === 2){
+        setTimeout(()=> {
+        const [a,b] = window.memoryFlipped;
+        if(a.dataset.value === b.dataset.value){
+            playSFX('match');
+            a.classList.add('matched'); b.classList.add('matched'); window.memoryMatched += 2;
+            if(window.memoryMatched === window.memoryCards.length){
+            document.getElementById('memoryMsg').textContent = '✅ Level clear! Next level...';
+            setTimeout(()=> initMemory(memoryLevel + 1), 900);
+            }
+        } else {
+            // wrong -> flash + vibrate + buzzer
+            flashRed(); try{ navigator.vibrate && navigator.vibrate(200); }catch(e){}
+            playSFX('buzzer');
+            a.classList.remove('flipped'); a.textContent = ''; b.classList.remove('flipped'); b.textContent = '';
+        }
+        window.memoryFlipped = [];
+        }, 600);
+    }
+    }
+
+    /* ====== FOCUS POP ====== */
+    let focusLevel = 1;
+    let focusCanvas, focusCtx, focusCircles = [], focusScore = 0, focusMistakes = 5;
+    window.focusRunning = false;
+
+    function startFocus(){
+    hideAllScreens();
+    document.getElementById('focusScreen').style.display='flex'; document.getElementById('focusScreen').classList.add('active');
+    requestFullscreen(document.documentElement);
+    initFocus(focusLevel);
+    }
+    function initFocus(level){
+    stopAll();
+    focusLevel = level; focusScore = 0; focusMistakes = 5;
+    document.getElementById('focusLevel').textContent = focusLevel;
+    document.getElementById('focusScore').textContent = focusScore;
+    document.getElementById('focusMistakes').textContent = focusMistakes;
+    // determine target
+    const cycle = ((focusLevel - 1) % 20) + 1;
+    let type = 'vowel';
+    if(cycle <= 5) type = 'vowel';
+    else if(cycle <= 10) type = 'even';
+    else if(cycle <= 15) type = 'odd';
+    else type = 'consonant';
+    window.focusTargetType = type;
+    const targetLabel = type==='vowel' ? 'Vowels (A E I O U)' : type==='even' ? 'Even digits' : type==='odd' ? 'Odd digits' : 'Consonants';
+    document.getElementById('focusTargetLabel').textContent = targetLabel;
+
+    // canvas sizing
+    focusCanvas = document.getElementById('focusCanvas');
+    focusCanvas.width = Math.min(1100, window.innerWidth - 80);
+    focusCanvas.height = 420;
+    focusCtx = focusCanvas.getContext('2d');
+
+    // populate circles
+    focusCircles = [];
+    const total = Math.min(8 + Math.floor(focusLevel*0.9), 70);
+    for(let i=0;i<total;i++){
+        let val, isTarget;
+        if(type === 'vowel'){ val = randomLetter(); isTarget = 'AEIOU'.includes(val); }
+        else if(type === 'consonant'){ val = randomLetter(); isTarget = !'AEIOU'.includes(val); }
+        else if(type === 'even'){ val = String(randInt(0,9)); isTarget = '02468'.includes(val); }
+        else { val = String(randInt(0,9)); isTarget = '13579'.includes(val); }
+        focusCircles.push({
+        x: Math.random()*(focusCanvas.width-60),
+        y: Math.random()*(focusCanvas.height-60),
+        dx: (Math.random()*1.6 + 0.5) * (Math.random()<0.5?-1:1) * (1 + focusLevel*0.02),
+        dy: (Math.random()*1.2 + 0.3) * (Math.random()<0.5?-1:1) * (1 + focusLevel*0.02),
+        r: 18 + Math.random()*10,
+        val, isTarget, popped:false
+        });
+    }
+
+    focusCanvas.onclick = function(ev){
+        if(!window.focusRunning) return;
+        const rect = focusCanvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+        for(let c of focusCircles){
+        if(!c.popped && Math.hypot(c.x + c.r - mx, c.y + c.r - my) < c.r){
+            if(c.isTarget){
+            c.popped = true; focusScore++; document.getElementById('focusScore').textContent = focusScore;
+            playSFX('pop');
+            } else {
+            flashRed(); try{ navigator.vibrate && navigator.vibrate(200); }catch(e){}
+            focusMistakes--; document.getElementById('focusMistakes').textContent = focusMistakes;
+            playSFX('buzzer');
+            if(focusMistakes <= 0){ handleGameOver(); return; }
+            }
+            break;
+        }
+        }
+    };
+
+    // timer
+    let time = Math.max(10, 30 - Math.floor(focusLevel*0.5));
+    document.getElementById('focusTimer').textContent = time;
+    if(window.focusTimer) clearInterval(window.focusTimer);
+    window.focusTimer = setInterval(()=>{
+        time--; document.getElementById('focusTimer').textContent = time;
+        if(time <= 0){ clearInterval(window.focusTimer); window.focusTimer = null; handleGameOver(); }
+    },1000);
+
+    window.focusRunning = true;
+    animateFocus();
+    }
+    function animateFocus(){
+    if(!window.focusRunning) return;
+    focusCtx.clearRect(0,0,focusCanvas.width,focusCanvas.height);
+    for(let c of focusCircles){
+        if(!c.popped){
+        c.x += c.dx; c.y += c.dy;
+        if(c.x < 0 || c.x > focusCanvas.width - c.r*2) c.dx *= -1;
+        if(c.y < 0 || c.y > focusCanvas.height - c.r*2) c.dy *= -1;
+        focusCtx.beginPath(); focusCtx.arc(c.x + c.r, c.y + c.r, c.r, 0, Math.PI*2);
+        focusCtx.fillStyle = c.isTarget ? '#ff6b6b' : '#4da6ff';
+        focusCtx.fill();
+        focusCtx.lineWidth = 2; focusCtx.strokeStyle = '#184'; focusCtx.stroke();
+        focusCtx.fillStyle = 'white'; focusCtx.font = (c.r*0.9)+'px Arial'; focusCtx.textAlign = 'center'; focusCtx.textBaseline = 'middle';
+        focusCtx.fillText(c.val, c.x + c.r, c.y + c.r + 1);
+        }
+    }
+    const remainingTargets = focusCircles.filter(c => c.isTarget && !c.popped).length;
+    if(remainingTargets === 0){
+        window.focusRunning = false;
+        if(window.focusTimer){ clearInterval(window.focusTimer); window.focusTimer = null; }
+        playSFX('success');
+        setTimeout(()=> initFocus(focusLevel + 1), 700);
+        return;
+    }
+    window.focusAnim = requestAnimationFrame(animateFocus);
+    }
+
+    /* ====== PUZZLE BUILDER ====== */
+    const lifeCycles = [
+    ["🥚 Egg","🐛 Caterpillar","🪲 Pupa","🦋 Butterfly"],
+    ["🥚 Egg","🐸 Tadpole","🐸 Froglet","🐸 Frog"],
+    ["🥚 Egg","🐣 Hatchling","🐥 Chick","🐔 Chicken"],
+    ["🥚 Egg","🐝 Larva","🐝 Pupa","🐝 Bee"],
+    ["🥚 Egg","🐢 Hatchling","🐢 Juvenile","🐢 Turtle"],
+    ["🥚 Egg","🐟 Fry","🐟 Juvenile","🐟 Salmon"],
+    ["🥚 Egg","🐞 Larva","🐞 Pupa","🐞 Ladybug"],
+    ["🥚 Egg","🐜 Larva","🐜 Pupa","🐜 Ant"],
+    ["🥚 Egg","🐧 Chick","🐧 Juvenile","🐧 Penguin"],
+    ["🥚 Egg","🐇 Kit","🐇 Juvenile","🐇 Rabbit"]
+    ];
+    let puzzleLevel = 1;
+    function startPuzzle(){
+    hideAllScreens();
+    document.getElementById('puzzleScreen').style.display='flex'; document.getElementById('puzzleScreen').classList.add('active');
+    requestFullscreen(document.documentElement);
+    initPuzzle(puzzleLevel);
+    }
+    function initPuzzle(level){
+    stopAll();
+    puzzleLevel = level;
+    document.getElementById('puzzleLevel').textContent = puzzleLevel;
+    const idx = (puzzleLevel - 1) % lifeCycles.length;
+    const stages = lifeCycles[idx].slice();
+    document.getElementById('puzzleAnimal').textContent = `Animal #${idx+1}`;
+    document.getElementById('puzzleHint').textContent = `Stages: ${stages.length}`;
+
+    const slotsEl = document.getElementById('puzzleSlots');
+    const piecesEl = document.getElementById('puzzlePieces');
+    slotsEl.innerHTML = ''; piecesEl.innerHTML = '';
+
+    stages.forEach((s,i) => {
+        const slot = document.createElement('div'); slot.className='slot'; slot.dataset.index = i;
+        slot.ondragover = e => e.preventDefault();
+        slot.ondrop = e => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain');
+        const pieceNode = document.querySelector(`[data-piece-id='${id}']`);
+        if(pieceNode){
+            if(slot.firstChild) piecesEl.appendChild(slot.firstChild);
+            slot.appendChild(pieceNode);
+            playSFX('click');
+            checkPuzzle();
+        } else {
+            // wrong action (dropping non-piece)
+            flashRed(); try{ navigator.vibrate && navigator.vibrate(200); }catch(e){}
+            playSFX('buzzer');
+        }
+        };
+        slotsEl.appendChild(slot);
+    });
+
+    // create pieces shuffled
+    const shuffled = stages.slice().sort(()=>Math.random()-0.5);
+    shuffled.forEach(label=>{
+        const p = document.createElement('div'); p.className='piece';
+        const id = 'p'+Math.random().toString(36).slice(2,9);
+        p.setAttribute('data-piece-id', id);
+        p.draggable = true; p.innerText = label;
+        p.ondragstart = e => { e.dataTransfer.setData('text/plain', id); playSFX('click'); };
+        piecesEl.appendChild(p);
+    });
+
+    // timer
+    let time = Math.max(12, 45 - Math.floor(puzzleLevel*0.6));
+    document.getElementById('puzzleTimer').textContent = time;
+    if(window.puzzleTimer) clearInterval(window.puzzleTimer);
+    window.puzzleTimer = setInterval(()=>{
+        time--; document.getElementById('puzzleTimer').textContent = time;
+        if(time <= 0){ clearInterval(window.puzzleTimer); window.puzzleTimer = null; handleGameOver(); }
+    },1000);
+
+    document.getElementById('puzzleMsg').textContent = '';
+    }
+    function checkPuzzle(){
+    const slots = [...document.querySelectorAll('#puzzleSlots .slot')];
+    const idx = (puzzleLevel - 1) % lifeCycles.length;
+    const correct = lifeCycles[idx];
+    let ok = true;
+    for(let i=0;i<slots.length;i++){
+        if(!slots[i].firstChild){ ok = false; break; }
+        const label = slots[i].firstChild.innerText;
+        if(label !== correct[i]){ ok = false; break; }
+    }
+    if(ok){
+        if(window.puzzleTimer){ clearInterval(window.puzzleTimer); window.puzzleTimer = null; }
+        playSFX('success');
+        document.getElementById('puzzleMsg').textContent = '✅ Correct! Next level...';
+        setTimeout(()=> initPuzzle(puzzleLevel + 1), 900);
+    } else {
+        // not all correct yet; wait
+    }
+    }
+
+    /* ===== PATTERN DETECTIVE (numbers only) ===== */
+    let patternLevel = 1;
+    function startPattern(){
+    hideAllScreens();
+    document.getElementById('patternScreen').style.display='flex'; document.getElementById('patternScreen').classList.add('active');
+    requestFullscreen(document.documentElement);
+    initPattern(patternLevel);
+    }
+    function initPattern(level){
+    stopAll();
+    patternLevel = level;
+    document.getElementById('patternLevel').textContent = patternLevel;
+    document.getElementById('patternMsg').textContent = '';
+    const types = ['arithmetic','skip','multiply','squares','fibonacci','alternating'];
+    const type = types[(patternLevel-1) % types.length];
+    document.getElementById('patternType').textContent = type;
+    let seq = [], next;
+    if(type === 'arithmetic'){
+        const a = randInt(1,6);
+        seq = [a, a+1, a+2, a+3]; next = a+4;
+    } else if(type === 'skip'){
+        const d = randInt(2,6);
+        const a = randInt(1,3);
+        seq = [a, a+d, a+2*d, a+3*d]; next = a+4*d;
+    } else if(type === 'multiply'){
+        const m = randInt(2,4);
+        const a = randInt(1,3);
+        seq = [a, a*m, a*m*m, a*Math.pow(m,3)]; next = a*Math.pow(m,4);
+    } else if(type === 'squares'){
+        const s0 = randInt(1,4);
+        seq = [s0*s0, (s0+1)*(s0+1), (s0+2)*(s0+2), (s0+3)*(s0+3)]; next = (s0+4)*(s0+4);
+    } else if(type === 'fibonacci'){
+        const a = randInt(1,5); const b = randInt(1,6);
+        seq = [a, b, a+b, a+2*b]; next = (a+3*b) + (a+2*b);
+    } else {
+        const a = randInt(1,5);
+        seq = [a, a+2, a+1, a+3]; next = a+2;
+    }
+
+    document.getElementById('patternSeq').textContent = seq.join(', ') + ', ?';
+    const optsEl = document.getElementById('patternOpts'); optsEl.innerHTML = '';
+    const opts = new Set([next]);
+    while(opts.size < 4){
+        let delta = randInt(-5,5); if(delta === 0) delta = 1;
+        opts.add(Math.max(0, next + delta));
+    }
+    const arr = Array.from(opts).sort(()=>Math.random()-0.5);
+    arr.forEach(val => {
+        const div = document.createElement('div'); div.className = 'option'; div.innerText = val;
+        div.onclick = () => {
+        playSFX('click');
+        if(val === next){
+            playSFX('match');
+            if(window.patternTimer) clearInterval(window.patternTimer);
+            document.getElementById('patternMsg').textContent = '✅ Correct! Next level...';
+            setTimeout(()=> initPattern(patternLevel + 1), 900);
+        } else {
+            div.classList.add('wrong');
+            flashRed(); try{ navigator.vibrate && navigator.vibrate(200); }catch(e){}
+            playSFX('buzzer');
+            handleGameOver();
+        }
+        };
+        optsEl.appendChild(div);
+    });
+
+    // timer
+    let time = Math.max(8, 18 - Math.floor(patternLevel*0.4));
+    document.getElementById('patternTimer').textContent = time;
+    if(window.patternTimer) clearInterval(window.patternTimer);
+    window.patternTimer = setInterval(()=>{
+        time--; document.getElementById('patternTimer').textContent = time;
+        if(time <= 0){ clearInterval(window.patternTimer); handleGameOver(); }
+    },1000);
+    }
+
+    /* ===== Game Over handler ===== */
+    function handleGameOver(){
+    flashRed(); try{ navigator.vibrate && navigator.vibrate(250); }catch(e){}
+    playSFX('gameover');
+    hideAllScreens();
+    const go = document.getElementById('gameOverScreen');
+    go.style.display = 'flex'; go.classList.add('active');
+    setTimeout(()=>{ backToMenu(); }, 2000);
+    }
+
+    /* ===== small helpers ===== */
+    function randomLetter(){ return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(randInt(0,25)); }
+
+    /* init */
+    document.addEventListener('DOMContentLoaded', ()=> {
+    // start screen visible by default
+    });
+    </script>
+    </body>
+    </html>
